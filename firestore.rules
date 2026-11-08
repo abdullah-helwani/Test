@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTask(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 2000)) &&
+             data.priority in ['low', 'medium', 'high', 'urgent'] &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             (!('dueDate' in data) || data.dueDate == null || (data.dueDate is string && data.dueDate.size() <= 20)) &&
+             (!('dueTime' in data) || data.dueTime == null || (data.dueTime is string && data.dueTime.size() <= 10)) &&
+             data.isCompleted is bool &&
+             (!('completedAt' in data) || data.completedAt == null || (data.completedAt is timestamp && data.completedAt <= request.time)) &&
+             (!('subtasks' in data) || data.subtasks == null || (data.subtasks is list && data.subtasks.size() <= 50 && (data.subtasks.size() == 0 || data.subtasks[0] is string)));
+    }
+
+    function isValidRoutine(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 1000)) &&
+             data.timeOfDay in ['morning', 'afternoon', 'evening', 'anytime'] &&
+             (!('targetTime' in data) || data.targetTime == null || (data.targetTime is string && data.targetTime.size() <= 10)) &&
+             (!('daysOfWeek' in data) || data.daysOfWeek == null || (data.daysOfWeek is list && data.daysOfWeek.size() <= 7 && (data.daysOfWeek.size() == 0 || data.daysOfWeek[0] is string))) &&
+             data.steps is list && data.steps.size() <= 50 && (data.steps.size() == 0 || data.steps[0] is string) &&
+             data.currentStreak is int && data.currentStreak >= 0 &&
+             data.bestStreak is int && data.bestStreak >= 0 &&
+             (!('lastCompletedDate' in data) || data.lastCompletedDate == null || (data.lastCompletedDate is string && data.lastCompletedDate.size() <= 20));
+    }
+
+    function isValidRoutineLog(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.routineId is string && data.routineId.size() >= 1 && data.routineId.size() <= 128 &&
+             data.completedDate is string && data.completedDate.size() <= 20 &&
+             data.stepsCompleted is int && data.stepsCompleted >= 0 &&
+             data.totalSteps is int && data.totalSteps >= 0 &&
+             data.completedAt is timestamp && data.completedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      match /tasks/{taskId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(taskId) &&
+                         incoming().userId == userId &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().keys().hasAll(['userId', 'title', 'priority', 'category', 'isCompleted', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'description', 'priority', 'category', 'dueDate', 'dueTime', 'isCompleted', 'completedAt', 'subtasks', 'createdAt', 'updatedAt']) &&
+                         isValidTask(incoming());
+        allow update: if isOwner(userId) && isValidId(taskId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidTask(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'priority', 'category', 'dueDate', 'dueTime', 'isCompleted', 'completedAt', 'subtasks', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+
+      match /routines/{routineId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(routineId) &&
+                         incoming().userId == userId &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().keys().hasAll(['userId', 'title', 'timeOfDay', 'steps', 'currentStreak', 'bestStreak', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'description', 'timeOfDay', 'targetTime', 'daysOfWeek', 'steps', 'currentStreak', 'bestStreak', 'lastCompletedDate', 'createdAt', 'updatedAt']) &&
+                         isValidRoutine(incoming());
+        allow update: if isOwner(userId) && isValidId(routineId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidRoutine(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'timeOfDay', 'targetTime', 'daysOfWeek', 'steps', 'currentStreak', 'bestStreak', 'lastCompletedDate', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(routineId);
+      }
+
+      match /routine_logs/{logId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(logId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'routineId', 'completedDate', 'stepsCompleted', 'totalSteps', 'completedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'routineId', 'completedDate', 'stepsCompleted', 'totalSteps', 'completedAt']) &&
+                         isValidRoutineLog(incoming());
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "To-do task created by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "title": { "type": "string", "description": "Title of the task" },
+        "description": { "type": "string", "description": "Optional notes/details" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"], "description": "Task priority" },
+        "category": { "type": "string", "description": "Category name e.g. Work, Personal, Health, Shopping" },
+        "dueDate": { "type": "string", "description": "Due date formatted as YYYY-MM-DD" },
+        "dueTime": { "type": "string", "description": "Due time formatted as HH:mm" },
+        "isCompleted": { "type": "boolean", "description": "Whether task is completed" },
+        "completedAt": { "type": "string", "format": "date-time", "description": "Timestamp when completed" },
+        "subtasks": { "type": "array", "description": "List of subtask titles" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update server timestamp" }
+      },
+      "required": ["userId", "title", "priority", "category", "isCompleted", "createdAt", "updatedAt"]
+    },
+    "Routine": {
+      "title": "Routine",
+      "description": "Recurring daily or scheduled routine with ordered steps",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "title": { "type": "string", "description": "Name of routine (e.g. Morning Focus, Evening Wind-Down)" },
+        "description": { "type": "string", "description": "Brief description" },
+        "timeOfDay": { "type": "string", "enum": ["morning", "afternoon", "evening", "anytime"], "description": "Time bucket" },
+        "targetTime": { "type": "string", "description": "Target start time HH:mm" },
+        "daysOfWeek": { "type": "array", "description": "Days active e.g. MON, TUE, WED" },
+        "steps": { "type": "array", "description": "Ordered step descriptions" },
+        "currentStreak": { "type": "integer", "description": "Current consecutive streak days" },
+        "bestStreak": { "type": "integer", "description": "Longest consecutive streak days" },
+        "lastCompletedDate": { "type": "string", "description": "Last completion date YYYY-MM-DD" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update server timestamp" }
+      },
+      "required": ["userId", "title", "timeOfDay", "steps", "currentStreak", "bestStreak", "createdAt", "updatedAt"]
+    },
+    "RoutineLog": {
+      "title": "RoutineLog",
+      "description": "Historical record of a completed routine session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "routineId": { "type": "string", "description": "Routine ID" },
+        "completedDate": { "type": "string", "description": "Completion date YYYY-MM-DD" },
+        "stepsCompleted": { "type": "integer", "description": "Count of steps finished" },
+        "totalSteps": { "type": "integer", "description": "Total steps in routine" },
+        "completedAt": { "type": "string", "format": "date-time", "description": "Completion server timestamp" }
+      },
+      "required": ["userId", "routineId", "completedDate", "stepsCompleted", "totalSteps", "completedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "User to-do task list items"
+    },
+    "/users/{userId}/routines/{routineId}": {
+      "schema": "Routine",
+      "description": "User routines and habits"
+    },
+    "/users/{userId}/routine_logs/{logId}": {
+      "schema": "RoutineLog",
+      "description": "Historical routine completion entries"
+    }
+  }
+}

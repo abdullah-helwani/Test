@@ -1,0 +1,6 @@
+{
+  "name": "RoutineFlow",
+  "description": "Comprehensive to-do list and daily routine tracker with habit streaks, scheduling, and cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
